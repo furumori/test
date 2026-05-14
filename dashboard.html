@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Subscription Analytics Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0f172a;
+    --surface:   #1e293b;
+    --surface2:  #273549;
+    --border:    rgba(255,255,255,0.07);
+    --indigo:    #6366f1;
+    --indigo-l:  #818cf8;
+    --indigo-d:  #4f46e5;
+    --emerald:   #10b981;
+    --rose:      #f43f5e;
+    --violet:    #8b5cf6;
+    --amber:     #f59e0b;
+    --text:      #f1f5f9;
+    --text-2:    #94a3b8;
+    --text-3:    #64748b;
+    --radius:    12px;
+    --radius-sm: 8px;
+    --shadow:    0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  html { font-size: 14px; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 40px;
+    line-height: 1.5;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--indigo), var(--violet));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; color: #fff;
+    flex-shrink: 0;
+  }
+  .header-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .header-sub { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+  .last-updated {
+    font-size: 11px; color: var(--text-3);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .live-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--emerald);
+    box-shadow: 0 0 6px var(--emerald);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Main container ── */
+  .container { max-width: 1440px; margin: 0 auto; padding: 20px 24px 0; }
+
+  /* ── Filters ── */
+  .filters {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .filter-group { display: flex; align-items: center; gap: 10px; }
+  .filter-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+  .filter-sep { width: 1px; height: 28px; background: var(--border); }
+
+  /* date inputs */
+  .date-range { display: flex; align-items: center; gap: 8px; }
+  .date-range input[type="date"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 10px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .date-range input[type="date"]:focus { border-color: var(--indigo); }
+  .date-range input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+  .date-range span { color: var(--text-3); font-size: 12px; }
+
+  /* quick-range pills */
+  .quick-ranges { display: flex; gap: 4px; }
+  .qr-btn {
+    font-size: 11px; font-weight: 500;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .qr-btn:hover { background: var(--surface2); color: var(--text); }
+  .qr-btn.active { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+
+  /* toggle buttons */
+  .toggle-group { display: flex; background: var(--surface2); border-radius: var(--radius-sm); padding: 3px; gap: 2px; }
+  .toggle-btn {
+    font-size: 12px; font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 5px;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .toggle-btn:hover { color: var(--text); }
+  .toggle-btn.active { background: var(--indigo); color: #fff; box-shadow: 0 1px 6px rgba(99,102,241,0.4); }
+
+  /* ── KPI Cards ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: default;
+  }
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .kpi-card.indigo::before  { background: linear-gradient(90deg, var(--indigo), var(--indigo-l)); }
+  .kpi-card.emerald::before { background: linear-gradient(90deg, var(--emerald), #34d399); }
+  .kpi-card.rose::before    { background: linear-gradient(90deg, var(--rose), #fb7185); }
+  .kpi-card.violet::before  { background: linear-gradient(90deg, var(--violet), #a78bfa); }
+  .kpi-card.amber::before   { background: linear-gradient(90deg, var(--amber), #fbbf24); }
+
+  .kpi-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .kpi-icon {
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .kpi-card.indigo  .kpi-icon { background: rgba(99,102,241,0.15); }
+  .kpi-card.emerald .kpi-icon { background: rgba(16,185,129,0.15); }
+  .kpi-card.rose    .kpi-icon { background: rgba(244,63,94,0.15); }
+  .kpi-card.violet  .kpi-icon { background: rgba(139,92,246,0.15); }
+  .kpi-card.amber   .kpi-icon { background: rgba(245,158,11,0.15); }
+
+  .kpi-badge {
+    font-size: 11px; font-weight: 600;
+    padding: 3px 8px; border-radius: 20px;
+    display: flex; align-items: center; gap: 3px;
+  }
+  .kpi-badge.up   { background: rgba(16,185,129,0.15); color: var(--emerald); }
+  .kpi-badge.down { background: rgba(244,63,94,0.15);  color: var(--rose); }
+  .kpi-badge.neutral { background: rgba(148,163,184,0.1); color: var(--text-3); }
+
+  .kpi-value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; margin-bottom: 4px; }
+  .kpi-label { font-size: 11px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi-sub   { font-size: 11px; color: var(--text-3); margin-top: 6px; }
+
+  /* ── Chart grid ── */
+  .chart-row {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .chart-row.row1 { grid-template-columns: 2fr 1fr; }
+  .chart-row.row2 { grid-template-columns: 2fr 1fr; }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: box-shadow 0.2s;
+  }
+  .chart-card:hover { box-shadow: var(--shadow); }
+
+  .chart-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
+  .chart-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .chart-sub   { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .chart-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); }
+  .legend-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .legend-line { width: 16px; height: 2px; border-radius: 2px; flex-shrink: 0; }
+
+  .chart-wrap { position: relative; }
+  .chart-wrap canvas { display: block; }
+
+  /* donut pair */
+  .donut-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    height: 100%;
+  }
+  .donut-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .donut-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .donut-wrap  { position: relative; width: 100%; }
+  .donut-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+  }
+  .donut-center-val  { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; }
+  .donut-center-unit { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+  .donut-legend { margin-top: 12px; width: 100%; }
+  .donut-legend-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .donut-legend-row:last-child { border-bottom: none; }
+  .donut-legend-name { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); }
+  .donut-legend-pct  { font-size: 11px; font-weight: 600; color: var(--text); }
+
+  /* ── Responsive ── */
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    .chart-row.row1, .chart-row.row2 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .filters  { flex-direction: column; align-items: flex-start; }
+    .filter-sep { display: none; }
+    .donut-pair { grid-template-columns: 1fr; }
+  }
+
+  /* ── Tooltip override ── */
+  .chartjs-tooltip {
+    background: #1e293b !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 10px !important;
+    padding: 10px 14px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 12px !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
+    pointer-events: none !important;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">S</div>
+    <div>
+      <div class="header-title">Subscription Analytics</div>
+      <div class="header-sub">Internal Demo Dashboard</div>
+    </div>
+  </div>
+  <div class="last-updated">
+    <div class="live-dot"></div>
+    <span id="lastUpdated">Updated —</span>
+  </div>
+</header>
+
+<!-- ── Main ── -->
+<div class="container">
+
+  <!-- Filters -->
+  <div class="filters">
+    <div class="filter-group">
+      <span class="filter-label">Period</span>
+      <div class="date-range">
+        <input type="date" id="dateFrom" />
+        <span>→</span>
+        <input type="date" id="dateTo" />
+      </div>
+      <div class="quick-ranges">
+        <button class="qr-btn" data-days="7">7D</button>
+        <button class="qr-btn" data-days="30">30D</button>
+        <button class="qr-btn active" data-days="90">90D</button>
+        <button class="qr-btn" data-days="180">6M</button>
+        <button class="qr-btn" data-days="365">1Y</button>
+        <button class="qr-btn" data-days="all">All</button>
+      </div>
+    </div>
+
+    <div class="filter-sep"></div>
+
+    <div class="filter-group">
+      <span class="filter-label">Platform</span>
+      <div class="toggle-group">
+        <button class="toggle-btn active" data-filter="platform" data-val="all">All</button>
+        <button class="toggle-btn" data-filter="platform" data-val="ios">iOS</button>
+        <button class="toggle-btn" data-filter="platform" data-val="android">Android</button>
+      </div>
+    </div>
+
+    <div class="filter-sep"></div>
+
+    <div class="filter-group">
+      <span class="filter-label">Plan</span>
+      <div class="toggle-group">
+        <button class="toggle-btn active" data-filter="plan" data-val="all">All</button>
+        <button class="toggle-btn" data-filter="plan" data-val="monthly">Monthly</button>
+        <button class="toggle-btn" data-filter="plan" data-val="annual">Annual</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card indigo">
+      <div class="kpi-header">
+        <div class="kpi-icon">📱</div>
+        <div class="kpi-badge" id="kpi-active-badge">—</div>
+      </div>
+      <div class="kpi-value" id="kpi-active-val">—</div>
+      <div class="kpi-label">Active Subscriptions</div>
+      <div class="kpi-sub" id="kpi-active-sub">—</div>
+    </div>
+    <div class="kpi-card emerald">
+      <div class="kpi-header">
+        <div class="kpi-icon">✨</div>
+        <div class="kpi-badge" id="kpi-new-badge">—</div>
+      </div>
+      <div class="kpi-value" id="kpi-new-val">—</div>
+      <div class="kpi-label">New Subscriptions</div>
+      <div class="kpi-sub" id="kpi-new-sub">—</div>
+    </div>
+    <div class="kpi-card rose">
+      <div class="kpi-header">
+        <div class="kpi-icon">📉</div>
+        <div class="kpi-badge" id="kpi-cancel-badge">—</div>
+      </div>
+      <div class="kpi-value" id="kpi-cancel-val">—</div>
+      <div class="kpi-label">Cancellations</div>
+      <div class="kpi-sub" id="kpi-cancel-sub">—</div>
+    </div>
+    <div class="kpi-card violet">
+      <div class="kpi-header">
+        <div class="kpi-icon">💴</div>
+        <div class="kpi-badge" id="kpi-mrr-badge">—</div>
+      </div>
+      <div class="kpi-value" id="kpi-mrr-val">—</div>
+      <div class="kpi-label">MRR</div>
+      <div class="kpi-sub" id="kpi-mrr-sub">—</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-header">
+        <div class="kpi-icon">🎯</div>
+        <div class="kpi-badge" id="kpi-conv-badge">—</div>
+      </div>
+      <div class="kpi-value" id="kpi-conv-val">—</div>
+      <div class="kpi-label">Trial Conversion</div>
+      <div class="kpi-sub" id="kpi-conv-sub">—</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Active Subs + MRR -->
+  <div class="chart-row row1">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Active Subscriptions</div>
+          <div class="chart-sub" id="activeSubsLabel">Over selected period</div>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-line" style="background:var(--indigo)"></div>Total</div>
+          <div class="legend-item"><div class="legend-line" style="background:#38bdf8"></div>iOS</div>
+          <div class="legend-item"><div class="legend-line" style="background:var(--emerald)"></div>Android</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartActiveSubs" height="200"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">MRR</div>
+          <div class="chart-sub" id="mrrLabel">Monthly Recurring Revenue</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartMRR" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Row 2: New vs Cancel + Donuts -->
+  <div class="chart-row row2">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">New Subscriptions vs Cancellations</div>
+          <div class="chart-sub" id="barSubLabel">Aggregated bars</div>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--emerald)"></div>New</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--rose)"></div>Cancellations</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--indigo)"></div>Net</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="chartBar" height="200"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Subscription Mix</div>
+          <div class="chart-sub">Platform &amp; Plan breakdown</div>
+        </div>
+      </div>
+      <div class="donut-pair">
+        <div class="donut-cell">
+          <div class="donut-label">Platform</div>
+          <div class="donut-wrap" id="donutPlatformWrap">
+            <canvas id="chartDonutPlatform"></canvas>
+            <div class="donut-center">
+              <div class="donut-center-val" id="donutPlatformVal">—</div>
+              <div class="donut-center-unit">total</div>
+            </div>
+          </div>
+          <div class="donut-legend" id="donutPlatformLegend"></div>
+        </div>
+        <div class="donut-cell">
+          <div class="donut-label">Plan</div>
+          <div class="donut-wrap" id="donutPlanWrap">
+            <canvas id="chartDonutPlan"></canvas>
+            <div class="donut-center">
+              <div class="donut-center-val" id="donutPlanVal">—</div>
+              <div class="donut-center-unit">total</div>
+            </div>
+          </div>
+          <div class="donut-legend" id="donutPlanLegend"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════
+   1. SEEDED RNG — xorshift32
+══════════════════════════════════════════ */
+function makeRng(seed) {
+  let s = seed >>> 0;
+  return function() {
+    s ^= s << 13; s ^= s >> 17; s ^= s << 5;
+    return ((s >>> 0) / 4294967296);
+  };
+}
+
+/* ══════════════════════════════════════════
+   2. DATA GENERATION
+══════════════════════════════════════════ */
+const START_DATE = new Date('2025-01-01');
+const END_DATE   = new Date('2026-05-14');
+
+const PRICE_MONTHLY = 980;
+const PRICE_ANNUAL  = 7800;
+const PRICE_ANNUAL_MONTHLY = 650; // for MRR
+
+const SEGMENTS = ['iosM','iosA','andM','andA'];
+const INIT_ACTIVE = { iosM: 3200, iosA: 1100, andM: 1800, andA: 650 };
+const CHURN_DAILY = { iosM: 0.0010, iosA: 0.0004, andM: 0.0010, andA: 0.0004 };
+// between 0.08-0.12% monthly, 0.03-0.05% annual
+
+// Campaign dates (YYYY-MM-DD)
+const CAMPAIGNS = [
+  '2025-02-14','2025-04-01','2025-07-01','2025-09-15',
+  '2025-11-29','2025-12-25','2026-01-10','2026-03-20','2026-05-01'
+];
+
+function dateToKey(d) {
+  return d.toISOString().slice(0,10);
+}
+function addDays(d, n) {
+  const r = new Date(d); r.setDate(r.getDate() + n); return r;
+}
+function daysBetween(a, b) {
+  return Math.round((b - a) / 86400000);
+}
+
+const campaignSet = new Set(CAMPAIGNS);
+function getCampaignMultiplier(dateStr, rng) {
+  // check if within 1 day of a campaign
+  const d = new Date(dateStr);
+  for (const c of CAMPAIGNS) {
+    const cd = new Date(c);
+    const diff = Math.abs(daysBetween(d, cd));
+    if (diff <= 1) {
+      return 2.0 + rng() * 2.0; // 2-4x
+    }
+  }
+  return 1.0;
+}
+
+function generateDailyData() {
+  const rng = makeRng(20250101);
+  const data = {}; // keyed by dateStr
+
+  const active = { ...INIT_ACTIVE };
+  const totalDays = daysBetween(START_DATE, END_DATE) + 1;
+  // Monthly growth target ~5%/month, so daily growth factor
+  // Base new subscriptions (before multipliers)
+  const BASE_NEW = { iosM: 28, iosA: 9, andM: 16, andA: 5 };
+
+  for (let i = 0; i < totalDays; i++) {
+    const d = addDays(START_DATE, i);
+    const dateStr = dateToKey(d);
+    const dow = d.getDay(); // 0=Sun, 6=Sat
+    const isWeekend = dow === 0 || dow === 6;
+    const dayOfYear = i % 365;
+
+    const weekendMult = isWeekend ? (0.55 + rng() * 0.15) : 1.0;
+    const seasonalMult = 1 + 0.10 * Math.sin((2 * Math.PI * dayOfYear) / 365 - Math.PI / 2);
+    const growthMult   = 1 + (0.05 / 30) * (i / 30); // slow growth over time
+    const campaignMult = getCampaignMultiplier(dateStr, rng);
+
+    const rec = { date: d, dateStr };
+
+    for (const seg of SEGMENTS) {
+      const isAnnual  = seg.endsWith('A');
+      const churnRate = CHURN_DAILY[seg] * (0.8 + rng() * 0.4);
+      const cancels   = Math.round(active[seg] * churnRate);
+
+      const baseNew = BASE_NEW[seg];
+      const noise   = 0.7 + rng() * 0.6;
+      const newSubs = Math.max(0, Math.round(baseNew * weekendMult * seasonalMult * growthMult * campaignMult * noise));
+
+      active[seg] = Math.max(0, active[seg] + newSubs - cancels);
+
+      const convRate = 0.28 + rng() * 0.12;
+      rec[seg + '_new']     = newSubs;
+      rec[seg + '_cancel']  = cancels;
+      rec[seg + '_active']  = active[seg];
+      rec[seg + '_conv']    = convRate;
+    }
+
+    data[dateStr] = rec;
+  }
+  return data;
+}
+
+const RAW_DATA = generateDailyData();
+const ALL_DATES = Object.keys(RAW_DATA).sort();
+
+/* ══════════════════════════════════════════
+   3. FILTER STATE
+══════════════════════════════════════════ */
+const state = {
+  platform: 'all',
+  plan:     'all',
+  dateFrom: null,
+  dateTo:   null,
+};
+
+function activeSegments() {
+  const segs = [];
+  const pf = state.platform;
+  const pl = state.plan;
+  if ((pf === 'all' || pf === 'ios') && (pl === 'all' || pl === 'monthly')) segs.push('iosM');
+  if ((pf === 'all' || pf === 'ios') && (pl === 'all' || pl === 'annual'))  segs.push('iosA');
+  if ((pf === 'all' || pf === 'android') && (pl === 'all' || pl === 'monthly')) segs.push('andM');
+  if ((pf === 'all' || pf === 'android') && (pl === 'all' || pl === 'annual'))  segs.push('andA');
+  return segs;
+}
+
+/* ══════════════════════════════════════════
+   4. DATA AGGREGATION HELPERS
+══════════════════════════════════════════ */
+function getFilteredDates() {
+  return ALL_DATES.filter(d => d >= state.dateFrom && d <= state.dateTo);
+}
+
+function segMRR(seg) {
+  return seg.endsWith('A') ? PRICE_ANNUAL_MONTHLY : PRICE_MONTHLY;
+}
+
+function computeKPIs(dates, segs) {
+  if (!dates.length) return null;
+  const last = RAW_DATA[dates[dates.length - 1]];
+  const first = RAW_DATA[dates[0]];
+
+  let active = 0, newSubs = 0, cancel = 0, mrr = 0;
+  let convSum = 0, convCount = 0;
+  for (const seg of segs) {
+    active += last[seg + '_active'];
+    mrr    += last[seg + '_active'] * segMRR(seg);
+    for (const d of dates) {
+      const r = RAW_DATA[d];
+      newSubs += r[seg + '_new'];
+      cancel  += r[seg + '_cancel'];
+      convSum += r[seg + '_conv'];
+      convCount++;
+    }
+  }
+  const conv = convCount ? convSum / convCount : 0;
+
+  // Previous period (same length)
+  const n = dates.length;
+  const prevEnd   = new Date(dates[0]); prevEnd.setDate(prevEnd.getDate() - 1);
+  const prevStart = new Date(prevEnd);  prevStart.setDate(prevStart.getDate() - (n - 1));
+  const prevDates = ALL_DATES.filter(d => {
+    const ds = dateToKey(prevStart), de = dateToKey(prevEnd);
+    return d >= ds && d <= de;
+  });
+
+  let pActive = 0, pNew = 0, pCancel = 0, pMRR = 0, pConv = 0, pConvC = 0;
+  if (prevDates.length) {
+    const pLast = RAW_DATA[prevDates[prevDates.length - 1]];
+    if (pLast) {
+      for (const seg of segs) {
+        pActive += pLast[seg + '_active'];
+        pMRR    += pLast[seg + '_active'] * segMRR(seg);
+        for (const d of prevDates) {
+          const r = RAW_DATA[d];
+          if (!r) continue;
+          pNew    += r[seg + '_new'];
+          pCancel += r[seg + '_cancel'];
+          pConv   += r[seg + '_conv'];
+          pConvC++;
+        }
+      }
+    }
+  }
+  pConv = pConvC ? pConv / pConvC : 0;
+
+  function pct(a, b) { return b ? ((a - b) / b) * 100 : 0; }
+
+  return {
+    active, newSubs, cancel, mrr, conv,
+    activePct:  pct(active,  pActive),
+    newPct:     pct(newSubs, pNew),
+    cancelPct:  pct(cancel,  pCancel),
+    mrrPct:     pct(mrr,     pMRR),
+    convPct:    pct(conv,    pConv),
+  };
+}
+
+/* bar aggregation */
+function aggregateBars(dates, segs) {
+  const n = dates.length;
+  let mode;
+  if (n < 14)      mode = 'daily';
+  else if (n <= 90) mode = 'weekly';
+  else              mode = 'monthly';
+
+  const buckets = {};
+  for (const d of dates) {
+    let key;
+    const dt = new Date(d);
+    if (mode === 'daily') {
+      key = d;
+    } else if (mode === 'weekly') {
+      // ISO week Monday
+      const day = dt.getDay();
+      const diff = (day === 0 ? -6 : 1 - day);
+      const mon = new Date(dt); mon.setDate(dt.getDate() + diff);
+      key = dateToKey(mon);
+    } else {
+      key = d.slice(0,7);
+    }
+    if (!buckets[key]) buckets[key] = { newSubs: 0, cancel: 0 };
+    const r = RAW_DATA[d];
+    for (const seg of segs) {
+      buckets[key].newSubs += r[seg + '_new'];
+      buckets[key].cancel  += r[seg + '_cancel'];
+    }
+  }
+  const keys = Object.keys(buckets).sort();
+  return {
+    labels: keys,
+    newSubs: keys.map(k => buckets[k].newSubs),
+    cancel:  keys.map(k => buckets[k].cancel),
+    net:     keys.map(k => buckets[k].newSubs - buckets[k].cancel),
+    mode
+  };
+}
+
+function aggregateTimeSeries(dates, segs) {
+  // for line charts, sample to max ~200 points
+  const n = dates.length;
+  const step = Math.max(1, Math.floor(n / 200));
+  const sampled = dates.filter((_, i) => i % step === 0 || i === n - 1);
+
+  const labels = sampled;
+  const iosActive   = sampled.map(d => { let v=0; for(const s of segs) if(s.startsWith('ios')) v+=RAW_DATA[d][s+'_active']; return v; });
+  const andActive   = sampled.map(d => { let v=0; for(const s of segs) if(s.startsWith('and')) v+=RAW_DATA[d][s+'_active']; return v; });
+  const totalActive = sampled.map((_,i) => iosActive[i] + andActive[i]);
+  const mrr = sampled.map(d => { let v=0; for(const s of segs) v+=RAW_DATA[d][s+'_active']*segMRR(s); return v; });
+
+  return { labels, iosActive, andActive, totalActive, mrr };
+}
+
+function computeMix(dates, segs) {
+  // Use last date for mix
+  const last = dates[dates.length - 1];
+  const r = RAW_DATA[last];
+  let iosTotal = 0, andTotal = 0, mTotal = 0, aTotal = 0;
+  for (const seg of segs) {
+    const v = r[seg + '_active'];
+    if (seg.startsWith('ios')) iosTotal += v;
+    else andTotal += v;
+    if (seg.endsWith('M')) mTotal += v;
+    else aTotal += v;
+  }
+  const total = iosTotal + andTotal;
+  return { iosTotal, andTotal, mTotal, aTotal, total };
+}
+
+/* ══════════════════════════════════════════
+   5. FORMATTING
+══════════════════════════════════════════ */
+function fmtNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 10000)   return (n/1000).toFixed(1) + 'K';
+  return Math.round(n).toLocaleString();
+}
+function fmtYen(n) {
+  if (n >= 1000000) return '¥' + (n/1000000).toFixed(2) + 'M';
+  if (n >= 10000)   return '¥' + Math.round(n/1000) + 'K';
+  return '¥' + Math.round(n).toLocaleString();
+}
+function fmtPct(p) {
+  return (p >= 0 ? '+' : '') + p.toFixed(1) + '%';
+}
+function fmtDate(d) {
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtDateShort(d) {
+  if (d.length === 7) {
+    return new Date(d + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  }
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/* ══════════════════════════════════════════
+   6. KPI CARD RENDERING
+══════════════════════════════════════════ */
+function setBadge(id, pct, invertDir) {
+  const el = document.getElementById(id);
+  const isUp = pct >= 0;
+  const isGood = invertDir ? !isUp : isUp; // cancellations: down is good
+  el.className = 'kpi-badge ' + (Math.abs(pct) < 0.05 ? 'neutral' : isGood ? 'up' : 'down');
+  el.textContent = (isUp ? '▲ ' : '▼ ') + Math.abs(pct).toFixed(1) + '%';
+}
+
+function renderKPIs(kpis, dates) {
+  if (!kpis) return;
+  document.getElementById('kpi-active-val').textContent = fmtNum(kpis.active);
+  document.getElementById('kpi-active-sub').textContent = `vs prev period`;
+  setBadge('kpi-active-badge', kpis.activePct, false);
+
+  document.getElementById('kpi-new-val').textContent = fmtNum(kpis.newSubs);
+  document.getElementById('kpi-new-sub').textContent = `${dates.length} days total`;
+  setBadge('kpi-new-badge', kpis.newPct, false);
+
+  document.getElementById('kpi-cancel-val').textContent = fmtNum(kpis.cancel);
+  document.getElementById('kpi-cancel-sub').textContent = `Churn events`;
+  setBadge('kpi-cancel-badge', kpis.cancelPct, true);
+
+  document.getElementById('kpi-mrr-val').textContent = fmtYen(kpis.mrr);
+  document.getElementById('kpi-mrr-sub').textContent = `Monthly recurring`;
+  setBadge('kpi-mrr-badge', kpis.mrrPct, false);
+
+  document.getElementById('kpi-conv-val').textContent = (kpis.conv * 100).toFixed(1) + '%';
+  document.getElementById('kpi-conv-sub').textContent = `Trial → paid`;
+  setBadge('kpi-conv-badge', kpis.convPct, false);
+}
+
+/* ══════════════════════════════════════════
+   7. CHART.JS GLOBALS
+══════════════════════════════════════════ */
+Chart.defaults.color           = '#64748b';
+Chart.defaults.borderColor     = 'rgba(255,255,255,0.05)';
+Chart.defaults.font.family     = "'Inter', sans-serif";
+Chart.defaults.font.size       = 11;
+Chart.defaults.plugins.legend.display = false;
+
+const TOOLTIP_STYLE = {
+  enabled: false,
+  external(ctx) {
+    let el = document.getElementById('custom-tooltip');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'custom-tooltip';
+      el.style.cssText = `
+        position:fixed; pointer-events:none; z-index:9999;
+        background:#1e293b; border:1px solid rgba(255,255,255,0.12);
+        border-radius:10px; padding:10px 14px;
+        font-family:'Inter',sans-serif; font-size:12px; color:#f1f5f9;
+        box-shadow:0 8px 24px rgba(0,0,0,0.5);
+        transition:opacity 0.15s; min-width:120px;
+      `;
+      document.body.appendChild(el);
+    }
+    if (ctx.tooltip.opacity === 0) { el.style.opacity = '0'; return; }
+    el.style.opacity = '1';
+    const { caretX, caretY } = ctx.tooltip;
+    const rect = ctx.chart.canvas.getBoundingClientRect();
+    el.style.left = (rect.left + caretX + 14) + 'px';
+    el.style.top  = (rect.top  + caretY - 10) + 'px';
+
+    const title = ctx.tooltip.title?.[0] || '';
+    const items = ctx.tooltip.dataPoints || [];
+    let html = `<div style="font-weight:700;color:#94a3b8;margin-bottom:6px">${title}</div>`;
+    for (const it of items) {
+      html += `<div style="display:flex;justify-content:space-between;gap:16px;padding:1px 0">
+        <span style="display:flex;align-items:center;gap:6px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${it.dataset.borderColor};display:inline-block"></span>
+          <span style="color:#94a3b8">${it.dataset.label}</span>
+        </span>
+        <span style="font-weight:600">${it.formattedValue}</span>
+      </div>`;
+    }
+    el.innerHTML = html;
+  }
+};
+
+function makeGradient(ctx, color, alpha1, alpha2) {
+  const g = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+  g.addColorStop(0, color.replace(')', `,${alpha1})`).replace('rgb','rgba'));
+  g.addColorStop(1, color.replace(')', `,${alpha2})`).replace('rgb','rgba'));
+  return g;
+}
+
+const charts = {};
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+/* ══════════════════════════════════════════
+   8. CHART RENDERS
+══════════════════════════════════════════ */
+function renderActiveSubsChart(ts) {
+  destroyChart('activeSubs');
+  const canvas = document.getElementById('chartActiveSubs');
+  const ctx = canvas.getContext('2d');
+
+  const gradTotal   = makeGradient(ctx, 'rgb(99,102,241)',   0.35, 0.02);
+  const gradIOS     = makeGradient(ctx, 'rgb(56,189,248)',   0.20, 0.01);
+  const gradAndroid = makeGradient(ctx, 'rgb(16,185,129)',   0.20, 0.01);
+
+  const labels = ts.labels.map(fmtDateShort);
+
+  charts['activeSubs'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Total',
+          data: ts.totalActive,
+          borderColor: '#6366f1',
+          backgroundColor: gradTotal,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 2.5,
+          order: 1
+        },
+        {
+          label: 'iOS',
+          data: ts.iosActive,
+          borderColor: '#38bdf8',
+          backgroundColor: gradIOS,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 1.5,
+          order: 2
+        },
+        {
+          label: 'Android',
+          data: ts.andActive,
+          borderColor: '#10b981',
+          backgroundColor: gradAndroid,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 1.5,
+          order: 3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 400 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: { tooltip: TOOLTIP_STYLE, legend: { display: false } },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { maxTicksLimit: 8, color: '#64748b' },
+          border: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#64748b', callback: v => fmtNum(v) },
+          border: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+}
+
+function renderMRRChart(ts) {
+  destroyChart('mrr');
+  const canvas = document.getElementById('chartMRR');
+  const ctx = canvas.getContext('2d');
+  const grad = makeGradient(ctx, 'rgb(139,92,246)', 0.4, 0.02);
+
+  charts['mrr'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ts.labels.map(fmtDateShort),
+      datasets: [{
+        label: 'MRR',
+        data: ts.mrr,
+        borderColor: '#8b5cf6',
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        borderWidth: 2.5
+      }]
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 400 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        tooltip: {
+          ...TOOLTIP_STYLE,
+          external(ctx2) {
+            // reuse same tooltip but format as yen
+            TOOLTIP_STYLE.external.call(this, ctx2);
+          }
+        },
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { maxTicksLimit: 5, color: '#64748b' },
+          border: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#64748b', callback: v => fmtYen(v) },
+          border: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+}
+
+function renderBarChart(bars) {
+  destroyChart('bar');
+  const canvas = document.getElementById('chartBar');
+  const ctx = canvas.getContext('2d');
+
+  const modeLabel = bars.mode === 'daily' ? 'Daily' : bars.mode === 'weekly' ? 'Weekly' : 'Monthly';
+  document.getElementById('barSubLabel').textContent = modeLabel + ' aggregation';
+
+  charts['bar'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: bars.labels.map(fmtDateShort),
+      datasets: [
+        {
+          label: 'New',
+          data: bars.newSubs,
+          backgroundColor: 'rgba(16,185,129,0.75)',
+          borderColor: '#10b981',
+          borderWidth: 1,
+          borderRadius: 3,
+          order: 2
+        },
+        {
+          label: 'Cancellations',
+          data: bars.cancel,
+          backgroundColor: 'rgba(244,63,94,0.65)',
+          borderColor: '#f43f5e',
+          borderWidth: 1,
+          borderRadius: 3,
+          order: 2
+        },
+        {
+          label: 'Net',
+          data: bars.net,
+          type: 'line',
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99,102,241,0.15)',
+          fill: false,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderWidth: 2,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 400 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: { tooltip: TOOLTIP_STYLE, legend: { display: false } },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { maxTicksLimit: 10, color: '#64748b' },
+          border: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#64748b', callback: v => fmtNum(v) },
+          border: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+}
+
+function renderDonutCharts(mix) {
+  destroyChart('donutPlatform');
+  destroyChart('donutPlan');
+
+  // Platform donut
+  const ctxP = document.getElementById('chartDonutPlatform').getContext('2d');
+  const iosPct  = mix.total ? (mix.iosTotal / mix.total * 100).toFixed(1) : 0;
+  const andPct  = mix.total ? (mix.andTotal / mix.total * 100).toFixed(1) : 0;
+
+  charts['donutPlatform'] = new Chart(ctxP, {
+    type: 'doughnut',
+    data: {
+      labels: ['iOS', 'Android'],
+      datasets: [{
+        data: [mix.iosTotal, mix.andTotal],
+        backgroundColor: ['#38bdf8', '#10b981'],
+        borderColor: ['#1e293b','#1e293b'],
+        borderWidth: 3,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      cutout: '70%',
+      responsive: true,
+      animation: { duration: 500 },
+      plugins: {
+        tooltip: {
+          enabled: true,
+          backgroundColor: '#1e293b',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#94a3b8',
+          bodyColor: '#f1f5f9',
+          padding: 10,
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${fmtNum(ctx.parsed)} (${(ctx.parsed/mix.total*100).toFixed(1)}%)`
+          }
+        },
+        legend: { display: false }
+      }
+    }
+  });
+  document.getElementById('donutPlatformVal').textContent = fmtNum(mix.total);
+  document.getElementById('donutPlatformLegend').innerHTML = `
+    <div class="donut-legend-row">
+      <span class="donut-legend-name"><span style="width:8px;height:8px;border-radius:50%;background:#38bdf8;display:inline-block"></span>iOS</span>
+      <span class="donut-legend-pct">${iosPct}%</span>
+    </div>
+    <div class="donut-legend-row">
+      <span class="donut-legend-name"><span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block"></span>Android</span>
+      <span class="donut-legend-pct">${andPct}%</span>
+    </div>`;
+
+  // Plan donut
+  const ctxL = document.getElementById('chartDonutPlan').getContext('2d');
+  const mPct = mix.total ? (mix.mTotal / mix.total * 100).toFixed(1) : 0;
+  const aPct = mix.total ? (mix.aTotal / mix.total * 100).toFixed(1) : 0;
+
+  charts['donutPlan'] = new Chart(ctxL, {
+    type: 'doughnut',
+    data: {
+      labels: ['Monthly', 'Annual'],
+      datasets: [{
+        data: [mix.mTotal, mix.aTotal],
+        backgroundColor: ['#6366f1', '#8b5cf6'],
+        borderColor: ['#1e293b','#1e293b'],
+        borderWidth: 3,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      cutout: '70%',
+      responsive: true,
+      animation: { duration: 500 },
+      plugins: {
+        tooltip: {
+          enabled: true,
+          backgroundColor: '#1e293b',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          titleColor: '#94a3b8',
+          bodyColor: '#f1f5f9',
+          padding: 10,
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${fmtNum(ctx.parsed)} (${(ctx.parsed/mix.total*100).toFixed(1)}%)`
+          }
+        },
+        legend: { display: false }
+      }
+    }
+  });
+  document.getElementById('donutPlanVal').textContent = fmtNum(mix.total);
+  document.getElementById('donutPlanLegend').innerHTML = `
+    <div class="donut-legend-row">
+      <span class="donut-legend-name"><span style="width:8px;height:8px;border-radius:50%;background:#6366f1;display:inline-block"></span>Monthly</span>
+      <span class="donut-legend-pct">${mPct}%</span>
+    </div>
+    <div class="donut-legend-row">
+      <span class="donut-legend-name"><span style="width:8px;height:8px;border-radius:50%;background:#8b5cf6;display:inline-block"></span>Annual</span>
+      <span class="donut-legend-pct">${aPct}%</span>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════
+   9. MAIN UPDATE FUNCTION
+══════════════════════════════════════════ */
+function update() {
+  const segs  = activeSegments();
+  const dates = getFilteredDates();
+  if (!dates.length || !segs.length) return;
+
+  const kpis = computeKPIs(dates, segs);
+  renderKPIs(kpis, dates);
+
+  const ts   = aggregateTimeSeries(dates, segs);
+  const bars = aggregateBars(dates, segs);
+  const mix  = computeMix(dates, segs);
+
+  // Update sub-labels
+  document.getElementById('activeSubsLabel').textContent =
+    `${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}`;
+  document.getElementById('mrrLabel').textContent =
+    `${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}`;
+
+  renderActiveSubsChart(ts);
+  renderMRRChart(ts);
+  renderBarChart(bars);
+  renderDonutCharts(mix);
+}
+
+/* ══════════════════════════════════════════
+   10. FILTER WIRING
+══════════════════════════════════════════ */
+function setDateRange(from, to) {
+  state.dateFrom = from;
+  state.dateTo   = to;
+  document.getElementById('dateFrom').value = from;
+  document.getElementById('dateTo').value   = to;
+}
+
+function applyQuickRange(days) {
+  const to   = ALL_DATES[ALL_DATES.length - 1];
+  let   from;
+  if (days === 'all') {
+    from = ALL_DATES[0];
+  } else {
+    const d = new Date(to); d.setDate(d.getDate() - (days - 1));
+    from = dateToKey(d);
+    if (from < ALL_DATES[0]) from = ALL_DATES[0];
+  }
+  setDateRange(from, to);
+}
+
+// Quick range buttons
+document.querySelectorAll('.qr-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.qr-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const d = btn.dataset.days;
+    applyQuickRange(d === 'all' ? 'all' : parseInt(d));
+    update();
+  });
+});
+
+// Date pickers
+document.getElementById('dateFrom').addEventListener('change', e => {
+  if (e.target.value) {
+    state.dateFrom = e.target.value;
+    document.querySelectorAll('.qr-btn').forEach(b => b.classList.remove('active'));
+    update();
+  }
+});
+document.getElementById('dateTo').addEventListener('change', e => {
+  if (e.target.value) {
+    state.dateTo = e.target.value;
+    document.querySelectorAll('.qr-btn').forEach(b => b.classList.remove('active'));
+    update();
+  }
+});
+
+// Platform / Plan toggles
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const filter = btn.dataset.filter;
+    document.querySelectorAll(`.toggle-btn[data-filter="${filter}"]`)
+      .forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state[filter] = btn.dataset.val;
+    update();
+  });
+});
+
+/* ══════════════════════════════════════════
+   11. INIT
+══════════════════════════════════════════ */
+// Set date range: default last 90 days
+applyQuickRange(90);
+
+// Last updated label
+document.getElementById('lastUpdated').textContent =
+  'Updated ' + new Date('2026-05-14').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' 09:00 JST';
+
+// Initial render
+update();
+</script>
+</body>
+</html>
